@@ -5,6 +5,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
+use uuid::Uuid;
 
 /// Settings for the Blob handler
 #[derive(Clone)]
@@ -15,16 +16,16 @@ pub struct FileSettings {
 
 impl FileSettings {
     /// Resolve the path for the blob file
-    pub fn resolve_blob_path(&self, metadata: &Metadata) -> String {
+    pub fn resolve_blob_path(&self, uuid: &Uuid) -> String {
         format!(
-            "{}/{}.{}",
-            self.data_folder, metadata.file_name, metadata.extension
+            "{}/{}.blob",
+            self.data_folder, uuid,
         )
     }
 
     /// Function resolve the metadata path
-    pub fn resolve_metadata_path(&self, metadata: &Metadata) -> String {
-        format!("{}/{}.json", self.metadata_folder, metadata.file_name)
+    pub fn resolve_metadata_path(&self, uuid: &Uuid) -> String {
+        format!("{}/{}.json", self.metadata_folder, uuid)
     }
 }
 
@@ -54,18 +55,19 @@ impl FileBlobHandler {
 #[async_trait]
 impl SaveBlob for FileBlobHandler {
     /// Save blob to filesystem
-    async fn save_blob(&self, blob: Blob) -> Result<()> {
+    async fn save_blob(&self, blob: Blob) -> Result<uuid::Uuid> {
+        let uuid = uuid::Uuid::new_v4();
         // Write the blob
-        let mut blob_file = File::create(self.settings.resolve_blob_path(&blob.metadata)).await?;
+        let mut blob_file = File::create(self.settings.resolve_blob_path(&uuid)).await?;
         blob_file.write_all(&blob.data).await?;
 
         // Write the metadata
         let json = serde_json::to_value(&blob.metadata).unwrap();
         let mut metadata_file =
-            File::create(self.settings.resolve_metadata_path(&blob.metadata)).await?;
+            File::create(self.settings.resolve_metadata_path(&uuid)).await?;
         // Save the json file
         metadata_file.write_all(json.to_string().as_bytes()).await?;
-        Ok(())
+        Ok(uuid)
     }
 }
 

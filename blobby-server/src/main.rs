@@ -41,10 +41,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_post_blob() {
+        // Create a blob function
         let blob = Blob {
             metadata: MetadataBuilder::new("test", "txt").build(),
             data: vec![1, 2, 3],
         };
+        // Create the app
         let app = app();
 
         // Serialize data into a byte array
