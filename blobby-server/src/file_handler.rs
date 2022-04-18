@@ -17,10 +17,7 @@ pub struct FileSettings {
 impl FileSettings {
     /// Resolve the path for the blob file
     pub fn resolve_blob_path(&self, uuid: &Uuid) -> String {
-        format!(
-            "{}/{}.blob",
-            self.data_folder, uuid,
-        )
+        format!("{}/{}.blob", self.data_folder, uuid,)
     }
 
     /// Function resolve the metadata path
@@ -63,8 +60,7 @@ impl SaveBlob for FileBlobHandler {
 
         // Write the metadata
         let json = serde_json::to_value(&blob.metadata).unwrap();
-        let mut metadata_file =
-            File::create(self.settings.resolve_metadata_path(&uuid)).await?;
+        let mut metadata_file = File::create(self.settings.resolve_metadata_path(&uuid)).await?;
         // Save the json file
         metadata_file.write_all(json.to_string().as_bytes()).await?;
         Ok(uuid)
@@ -95,18 +91,16 @@ mod tests {
         };
 
         // Save file
-        blob_handler.save_blob(blob).await.unwrap();
+        let uuid = blob_handler.save_blob(blob).await.unwrap();
 
         // Check if files have been created
         assert!(
-            std::path::Path::new(&format!("{}/{}", file_settings.data_folder, "bloep.txt"))
-                .exists()
+            std::path::Path::new(&format!("{}/{}.blob", file_settings.data_folder, uuid)).exists()
         );
         // and if metadata exists
-        assert!(std::path::Path::new(&format!(
-            "{}/{}",
-            file_settings.metadata_folder, "bloep.json"
-        ))
-        .exists());
+        assert!(
+            std::path::Path::new(&format!("{}/{}.json", file_settings.metadata_folder, uuid))
+                .exists()
+        );
     }
 }

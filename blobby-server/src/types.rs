@@ -72,4 +72,10 @@ mod tests {
         dbg!(metadata);
     }
 
+    #[test]
+    fn test_deserialize_blob() {
+        let data = include_bytes!("../test-resources/blob.msgpack");
+        let blob: super::Blob = rmp_serde::from_slice(data).unwrap();
+        dbg!(blob);
+    }
 }

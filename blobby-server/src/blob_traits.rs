@@ -4,7 +4,7 @@ use crate::types::Blob;
 
 #[async_trait]
 pub trait SaveBlob {
-    async fn save_blob(&self, blob: Blob) -> anyhow::Result<(uuid::Uuid)>;
+    async fn save_blob(&self, blob: Blob) -> anyhow::Result<uuid::Uuid>;
 }
 
 #[async_trait]
