@@ -1,5 +1,5 @@
 use crate::blob_traits::SaveBlob;
-use crate::types::Metadata;
+
 use crate::Blob;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -36,7 +36,7 @@ impl Default for FileSettings {
     }
 }
 
-/// Struct that handles saving of blobs to disk
+/// Struct that handles saving of blobs to disk, implements the SaveBlob trait
 #[derive(Clone)]
 pub struct FileBlobHandler {
     settings: FileSettings,
@@ -53,7 +53,7 @@ impl FileBlobHandler {
 impl SaveBlob for FileBlobHandler {
     /// Save blob to filesystem
     async fn save_blob(&self, blob: Blob) -> Result<uuid::Uuid> {
-        let uuid = uuid::Uuid::new_v4();
+        let uuid = Uuid::new_v4();
         // Write the blob
         let mut blob_file = File::create(self.settings.resolve_blob_path(&uuid)).await?;
         blob_file.write_all(&blob.data).await?;

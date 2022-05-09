@@ -17,6 +17,7 @@ rmp-serde = "1.0.0"
 anyhow = "1"
 async-trait = "0.1.53"
 uuid = { version = "0.8", features = ["v4"] }
+hyper = { version = "0.14", features = ["full"] }
 
 
 [dev-dependencies]

@@ -1,24 +1,41 @@
 use crate::types::Blob;
 
 use crate::file_handler::FileBlobHandler;
-use axum::{routing::post, Router};
+
+use axum::{extract::Extension, http::StatusCode, routing::post, Router};
 use axum_msgpack::MsgPack;
+use blob_traits::SaveBlob;
 
 mod blob_traits;
 mod file_handler;
 mod types;
 
+/// Handles the anyhow error type
+fn handle_anyhow_error(err: anyhow::Error) -> (StatusCode, String) {
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        format!("Something went wrong: {}", err),
+    )
+}
+
 /// Post a blob to the server to save
-async fn post_blob(MsgPack(blob): MsgPack<Blob>) {
-    dbg!(blob.metadata);
+async fn post_blob(
+    MsgPack(blob): MsgPack<Blob>,
+    Extension(blob_handler): Extension<FileBlobHandler>,
+) -> Result<String, (StatusCode, String)> {
+    blob_handler
+        .save_blob(blob)
+        .await
+        .map(|uuid| uuid.to_string())
+        .map_err(|e| handle_anyhow_error(e))
 }
 
 /// Creates the router and registers the routes
 fn app() -> Router {
-    let handler = FileBlobHandler::default();
+    let blob_handler = FileBlobHandler::default();
     Router::new()
         .route("/blob", post(post_blob))
-        .layer(axum::extract::Extension(handler))
+        .layer(Extension(blob_handler))
 }
 
 #[tokio::main]
@@ -29,7 +46,7 @@ async fn main() {
     axum::Server::bind(&"0.0.0.0:3030".parse().unwrap())
         .serve(app().into_make_service())
         .await
-        .unwrap();
+        .expect("Blobby crashed with an error");
 }
 
 #[cfg(test)]
@@ -37,6 +54,7 @@ mod tests {
     use super::*;
     use crate::types::MetadataBuilder;
     use axum::http;
+    use std::str::FromStr;
     use tower::ServiceExt;
 
     #[tokio::test]
@@ -70,5 +88,10 @@ mod tests {
 
         // Check that we get a 200 response
         assert_eq!(response.status(), http::StatusCode::OK);
+        // Check that we got a uuid back
+        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let uuid = String::from_utf8_lossy(body.as_ref());
+        // Check if we can parse it as a uuid
+        uuid::Uuid::from_str(uuid.as_ref()).expect("Should be able to parse this as a uuid");
     }
 }
