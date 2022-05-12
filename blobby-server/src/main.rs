@@ -1,3 +1,4 @@
+
 use crate::types::Blob;
 
 use crate::file_handler::FileBlobHandler;
@@ -5,10 +6,12 @@ use crate::file_handler::FileBlobHandler;
 use axum::{extract::Extension, http::StatusCode, routing::post, Router};
 use axum_msgpack::MsgPack;
 use blob_traits::SaveBlob;
+use std::sync::Arc;
 
 mod blob_traits;
 mod file_handler;
 mod types;
+mod hashmap_handler;
 
 /// Handles the anyhow error type
 fn handle_anyhow_error(err: anyhow::Error) -> (StatusCode, String) {
@@ -21,7 +24,7 @@ fn handle_anyhow_error(err: anyhow::Error) -> (StatusCode, String) {
 /// Post a blob to the server to save
 async fn post_blob(
     MsgPack(blob): MsgPack<Blob>,
-    Extension(blob_handler): Extension<FileBlobHandler>,
+    Extension(blob_handler): Extension<Arc<dyn SaveBlob + Send + Sync>>,
 ) -> Result<String, (StatusCode, String)> {
     blob_handler
         .save_blob(blob)
@@ -30,9 +33,9 @@ async fn post_blob(
         .map_err(|e| handle_anyhow_error(e))
 }
 
+
 /// Creates the router and registers the routes
-fn app() -> Router {
-    let blob_handler = FileBlobHandler::default();
+fn app(blob_handler: Arc<dyn SaveBlob + Send + Sync>) -> Router {
     Router::new()
         .route("/blob", post(post_blob))
         .layer(Extension(blob_handler))
@@ -44,7 +47,7 @@ async fn main() {
 
     // run it with hyper on localhost:3030
     axum::Server::bind(&"0.0.0.0:3030".parse().unwrap())
-        .serve(app().into_make_service())
+        .serve(app(Arc::new(FileBlobHandler::default())).into_make_service())
         .await
         .expect("Blobby crashed with an error");
 }
@@ -56,6 +59,7 @@ mod tests {
     use axum::http;
     use std::str::FromStr;
     use tower::ServiceExt;
+    use crate::hashmap_handler::HashmapHandler;
 
     #[tokio::test]
     async fn test_post_blob() {
@@ -65,7 +69,7 @@ mod tests {
             data: vec![1, 2, 3],
         };
         // Create the app
-        let app = app();
+        let app = app(Arc::new(HashmapHandler::default()));
 
         // Serialize data into a byte array
         let vec = rmp_serde::to_vec(&blob).unwrap();
